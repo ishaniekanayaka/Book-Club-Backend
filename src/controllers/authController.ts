@@ -21,7 +21,7 @@ const createRefreshToken = (user: any) => {
     );
 };
 
-
+// ✅ Sign Up
 export const signUp = async (
     req: Request,
     res: Response,
@@ -80,6 +80,19 @@ export const signUp = async (
             message: "User registered successfully",
             user: userResponse,
         });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getAllUsers = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const users = await UserModel.find({ isActive: true }).select("-password");
+        res.status(200).json(users);
     } catch (err) {
         next(err);
     }
