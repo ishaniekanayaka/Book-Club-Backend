@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { BookModel } from "../models/Book";
 import { ApiErrors } from "../errors/ApiErrors";
 
-// ✅ Add a new book
+
 export const addBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const {
@@ -44,7 +44,7 @@ export const addBook = async (req: Request, res: Response, next: NextFunction) =
     }
 };
 
-// ✅ Get all books (with optional genre filter)
+
 export const getAllBooks = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { genre } = req.query;
@@ -58,7 +58,7 @@ export const getAllBooks = async (req: Request, res: Response, next: NextFunctio
     }
 };
 
-// ✅ Get book by ID
+
 export const getBookById = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const bookId = req.params.id;
@@ -72,7 +72,7 @@ export const getBookById = async (req: Request, res: Response, next: NextFunctio
     }
 };
 
-// ✅ Update book
+
 export const updateBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const bookId = req.params.id;
@@ -112,7 +112,7 @@ export const updateBook = async (req: Request, res: Response, next: NextFunction
     }
 };
 
-// ✅ Soft delete book
+
 export const deleteBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const bookId = req.params.id;
@@ -133,23 +133,11 @@ export const deleteBook = async (req: Request, res: Response, next: NextFunction
     }
 };
 
-// ✅ Optional: Restore deleted book
-export const restoreBook = async (req: Request, res: Response, next: NextFunction) => {
+
+export const getGenres = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const bookId = req.params.id;
-
-        const restoredBook = await BookModel.findOneAndUpdate(
-            { _id: bookId, isDeleted: true },
-            { isDeleted: false },
-            { new: true }
-        );
-
-        if (!restoredBook) throw new ApiErrors(404, "Book not found");
-
-        res.status(200).json({
-            message: "Book restored successfully",
-            book: restoredBook,
-        });
+        const genres = await BookModel.distinct("genre", { isDeleted: false });
+        res.status(200).json(genres);
     } catch (err) {
         next(err);
     }
