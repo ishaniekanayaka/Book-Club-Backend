@@ -41,7 +41,7 @@ export const signUp = async (
 
         const profileImage = req.file?.path;
 
-        // Check for duplicate email
+
         const existingUser = await UserModel.findOne({ email });
         if (existingUser) throw new ApiErrors(400, "Email already registered");
 
@@ -152,6 +152,7 @@ export const login = async (
             email: user.email,
             role: user.role,
             accessToken,
+            refreshToken
         });
     } catch (err) {
         next(err);
