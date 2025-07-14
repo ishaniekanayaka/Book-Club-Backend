@@ -15,7 +15,7 @@ export const addBook = async (req: Request, res: Response, next: NextFunction) =
             copiesAvailable,
         } = req.body;
 
-        const profileImage = req.file?.path;
+        const backCover = req.file?.path;
 
         if (isbn) {
             const existing = await BookModel.findOne({ isbn });
@@ -30,7 +30,7 @@ export const addBook = async (req: Request, res: Response, next: NextFunction) =
             genre,
             description,
             copiesAvailable,
-            profileImage,
+            backCover,
         });
 
         await newBook.save();
@@ -85,7 +85,7 @@ export const updateBook = async (req: Request, res: Response, next: NextFunction
             copiesAvailable,
         } = req.body;
 
-        const profileImage = req.file?.path;
+        const backCover = req.file?.path;
 
         const updatedBook = await BookModel.findOneAndUpdate(
             { _id: bookId, isDeleted: false },
@@ -96,7 +96,7 @@ export const updateBook = async (req: Request, res: Response, next: NextFunction
                 genre,
                 description,
                 copiesAvailable,
-                ...(profileImage && { profileImage }),
+                ...(backCover && { backCover }),
             },
             { new: true }
         );

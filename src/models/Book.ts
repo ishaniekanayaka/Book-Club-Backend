@@ -8,7 +8,7 @@ export type Book = {
     genre?: string;
     description?: string;
     copiesAvailable: number;
-    profileImage?: string;
+    backCover?: string;
     isDeleted?: boolean;
 };
 
@@ -33,7 +33,7 @@ const bookSchema = new mongoose.Schema<Book>(
         genre: { type: String, trim: true },
         description: String,
         copiesAvailable: { type: Number, default: 1 },
-        profileImage: {
+        backCover: {
             type: String,
             match: [/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/, "Must be a valid image URL"],
         },
