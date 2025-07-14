@@ -4,7 +4,7 @@ export type User = {
     name: string;
     email: string;
     password: string;
-    role?: "admin" | "librarian" | "reader";
+    role?: "staff" | "librarian" | "reader";
     phone?: string;
     address?: string;
     dateOfBirth?: Date;
@@ -18,7 +18,7 @@ export type User = {
 // Function to generate unique memberId
 const generateMemberId = (): string => {
     const year = new Date().getFullYear();
-    const randomDigits = Math.floor(10000 + Math.random() * 90000); // 5-digit random
+    const randomDigits = Math.floor(10000 + Math.random() * 90000);
     return `MEM-${year}-${randomDigits}`;
 };
 
@@ -45,7 +45,7 @@ const userSchema = new mongoose.Schema<User>(
         },
         role: {
             type: String,
-            enum: ["admin", "librarian", "reader"],
+            enum: ["staff", "librarian", "reader"],
             default: "reader",
         },
         phone: {
@@ -74,7 +74,7 @@ const userSchema = new mongoose.Schema<User>(
         memberId: {
             type: String,
             unique: true,
-            sparse: true, // allows null + unique
+            sparse: true,
             default: null,
         },
         nic: {
@@ -93,7 +93,7 @@ userSchema.pre("save", async function (next) {
     if (this.role === "reader" && !this.memberId) {
         let newMemberId = generateMemberId();
 
-        // Ensure uniqueness
+
         while (await mongoose.models.User.findOne({ memberId: newMemberId })) {
             newMemberId = generateMemberId();
         }
@@ -101,7 +101,6 @@ userSchema.pre("save", async function (next) {
         this.memberId = newMemberId;
     }
 
-    // If not reader, make sure memberId is null
     if (this.role !== "reader") {
         this.memberId = null;
     }
