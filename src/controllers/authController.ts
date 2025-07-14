@@ -9,7 +9,7 @@ const createAccessToken = (user: any) => {
     return jwt.sign(
         { userId: user._id, role: user.role },
         process.env.ACCESS_TOKEN_SECRET!,
-        { expiresIn: "15m" }
+        { expiresIn: "1d" }
     );
 };
 
@@ -20,8 +20,6 @@ const createRefreshToken = (user: any) => {
         { expiresIn: "7d" }
     );
 };
-
-// ✅ Sign Up
 export const signUp = async (
     req: Request,
     res: Response,
@@ -41,17 +39,27 @@ export const signUp = async (
 
         const profileImage = req.file?.path;
 
+        // ✅ Validate role
+        if (!["staff", "librarian", "reader"].includes(role)) {
+            throw new ApiErrors(400, "Invalid role. Must be one of: staff, librarian, or reader");
+        }
 
+        // ✅ Check for existing email
         const existingUser = await UserModel.findOne({ email });
         if (existingUser) throw new ApiErrors(400, "Email already registered");
 
-        // Hash password
-        const hashPassword = await bcrypt.hash(password, 10);
+        // ✅ Check for existing NIC
+        const existingNic = await UserModel.findOne({ nic });
+        if (existingNic) throw new ApiErrors(400, "NIC already registered");
 
+        // ✅ Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // ✅ Create and save new user
         const newUser = new UserModel({
             name,
             email,
-            password: hashPassword,
+            password: hashedPassword,
             role,
             phone,
             address,
@@ -80,7 +88,13 @@ export const signUp = async (
             message: "User registered successfully",
             user: userResponse,
         });
-    } catch (err) {
+
+    } catch (err: any) {
+        // ✅ Handle mongoose validation errors clearly
+        if (err.name === "ValidationError") {
+            const messages = Object.values(err.errors).map((val: any) => val.message);
+            return next(new ApiErrors(400, messages.join(", ")));
+        }
         next(err);
     }
 };
@@ -140,7 +154,7 @@ export const login = async (
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: false, // <-- force false in dev
+            secure: false,
             maxAge: 7 * 24 * 60 * 60 * 1000,
             path: "/api/auth/refresh-token",
         });
@@ -221,10 +235,85 @@ export const logout = async (
     try {
         res.clearCookie("refreshToken", {
             httpOnly: true,
-            path: "/api/auth/refresh-token", // Same path used in login
+            path: "/api/auth/refresh-token",
         });
 
         res.status(200).json({ message: "Logout successful" });
+    } catch (err) {
+        next(err);
+    }
+};
+
+
+export const getAllReaders = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const readers = await UserModel.find({ role: "reader", isActive: true }).select("-password");
+        res.status(200).json(readers);
+    } catch (err) {
+        next(err);
+    }
+};
+
+
+// ✅ Fixed: Updated to include 'admin' and 'staff' roles
+export const getAllStaff = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const staff = await UserModel.find({
+            role: { $in: ["admin", "staff", "librarian"] },
+            isActive: true
+        }).select("-password");
+        res.status(200).json(staff);
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.params.id;
+
+        const { name, phone, address, dateOfBirth } = req.body;
+        const profileImage = req.file?.path;
+
+        const updateData: any = {
+            ...(name && { name }),
+            ...(phone && { phone }),
+            ...(address && { address }),
+            ...(dateOfBirth && { dateOfBirth }),
+            ...(profileImage && { profileImage }),
+        };
+
+        const updatedUser = await UserModel.findByIdAndUpdate(userId, updateData, { new: true }).select("-password");
+
+        if (!updatedUser) throw new ApiErrors(404, "User not found");
+
+        res.status(200).json({
+            message: "User updated successfully",
+            user: updatedUser,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ✅ Fixed: Updated role validation to include 'admin' and 'staff'
+export const updateUserRole = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.params.id;
+        const { role } = req.body;
+
+        if (!["admin", "staff", "librarian", "reader"].includes(role)) {
+            throw new ApiErrors(400, "Invalid role. Must be one of: admin, staff, librarian, or reader");
+        }
+
+        const updated = await UserModel.findByIdAndUpdate(userId, { role }, { new: true }).select("-password");
+
+        if (!updated) throw new ApiErrors(404, "User not found");
+
+        res.status(200).json({
+            message: "User role updated successfully",
+            user: updated,
+        });
     } catch (err) {
         next(err);
     }

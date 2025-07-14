@@ -4,7 +4,7 @@ export type User = {
     name: string;
     email: string;
     password: string;
-    role?: "staff" | "librarian" | "reader";
+    role: "staff" | "librarian" | "reader";
     phone?: string;
     address?: string;
     dateOfBirth?: Date;
@@ -15,11 +15,10 @@ export type User = {
     nic?: string;
 };
 
-// Function to generate unique memberId
-const generateMemberId = (): string => {
+const generateMemberId = (prefix: string): string => {
     const year = new Date().getFullYear();
-    const randomDigits = Math.floor(10000 + Math.random() * 90000);
-    return `MEM-${year}-${randomDigits}`;
+    const randomDigits = Math.floor(10000 + Math.random() * 90000); // 5-digit random
+    return `${prefix}-${year}-${randomDigits}`;
 };
 
 const userSchema = new mongoose.Schema<User>(
@@ -61,6 +60,7 @@ const userSchema = new mongoose.Schema<User>(
         },
         profileImage: {
             type: String,
+            // Optional match (if image is hosted remotely)
             match: [/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/, "Must be a valid image URL"],
         },
         isActive: {
@@ -74,13 +74,14 @@ const userSchema = new mongoose.Schema<User>(
         memberId: {
             type: String,
             unique: true,
-            sparse: true,
+            sparse: true, // allow null values to be non-unique
             default: null,
         },
         nic: {
             type: String,
             trim: true,
-            match: [/^\d{9}[vVxX]|\d{12}$/, "NIC must be valid (e.g., 991234567V or 200012345678)"],
+            unique: true,
+            match: [/^\d{9}[vVxX]$|^\d{12}$/, "NIC must be valid (e.g., 991234567V or 200012345678)"],
         },
     },
     {
@@ -88,24 +89,25 @@ const userSchema = new mongoose.Schema<User>(
     }
 );
 
-// 👇 Auto-generate memberId only for "reader"
 userSchema.pre("save", async function (next) {
-    if (this.role === "reader" && !this.memberId) {
-        let newMemberId = generateMemberId();
+    if (!this.memberId) {
+        let prefix = "";
+        if (this.role === "reader") prefix = "Reader";
+        else if (this.role === "librarian") prefix = "Librarian";
+        else if (this.role === "staff") prefix = "Staff";
+        else prefix = "U"; // fallback if needed
 
+        let newMemberId = generateMemberId(prefix);
 
+        // Ensure uniqueness
         while (await mongoose.models.User.findOne({ memberId: newMemberId })) {
-            newMemberId = generateMemberId();
+            newMemberId = generateMemberId(prefix);
         }
 
         this.memberId = newMemberId;
     }
-
-    if (this.role !== "reader") {
-        this.memberId = null;
-    }
-
     next();
 });
+
 
 export const UserModel = mongoose.model("User", userSchema);
