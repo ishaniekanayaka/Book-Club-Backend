@@ -2,7 +2,7 @@ import { Router } from "express";
 import { upload } from "../middlewares/upload"; // your multer setup
 import { authenticateToken } from "../middlewares/authenticateToken";
 import { authorizeRoles } from "../middlewares/verifyAccessToken";
-import {createReader, deleteReader, getAllReaders, updateReader} from "../controllers/readerController";
+import {createReader, deleteReader, getAllReaders, getReaderLogs, updateReader} from "../controllers/readerController";
 
 
 const readerRouter = Router();
@@ -11,5 +11,6 @@ readerRouter.post("/add", authenticateToken, authorizeRoles("staff", "librarian"
 readerRouter.get("/all", authenticateToken, authorizeRoles("staff", "librarian"), getAllReaders);
 readerRouter.put("/:id", authenticateToken, authorizeRoles("staff", "librarian"), upload.single("profileImage"), updateReader);
 readerRouter.delete("/:id", authenticateToken, authorizeRoles("staff", "librarian"), deleteReader);
+readerRouter.get("/:id/logs", getReaderLogs);
 
 export default readerRouter;

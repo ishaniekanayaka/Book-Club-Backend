@@ -14,6 +14,8 @@ export type Reader = {
     createdBy?: string;
     updatedBy?: string;
     updatedAt?: Date;
+    deletedBy?: string;
+    deletedAt?: Date;
 };
 
 const generateMemberId = (): string => {
@@ -83,6 +85,13 @@ const readerSchema = new mongoose.Schema<Reader>(
         updatedAt: {
             type: Date,
         },
+        deletedBy: {
+            type: String,
+        },
+        deletedAt: {
+            type: Date,
+        },
+
     },
     {
         versionKey: false,

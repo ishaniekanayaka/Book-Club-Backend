@@ -15,12 +15,11 @@ const getUserFromToken = (req: Request) => {
 export const createReader = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { name } = getUserFromToken(req);
-        // profileImage is in req.file.path when using multer
         const profileImage = req.file?.path;
 
         const reader = new ReaderModel({
             ...req.body,
-            profileImage,        // assign profileImage if uploaded
+            profileImage,
             createdBy: name,
             createdAt: new Date(),
         });
@@ -77,6 +76,27 @@ export const deleteReader = async (req: Request, res: Response, next: NextFuncti
         );
         if (!deleted) throw new ApiErrors(404, "Reader not found");
         res.status(200).json({ message: "Reader soft deleted", deleted });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getReaderLogs = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const reader = await ReaderModel.findById(id);
+        if (!reader) throw new ApiErrors(404, "Reader not found");
+
+        const logs = {
+            createdBy: reader.createdBy,
+            createdAt: reader.createdAt,
+            updatedBy: reader.updatedBy,
+            updatedAt: reader.updatedAt,
+            deletedBy: reader.deletedBy,
+            deletedAt: reader.deletedAt,
+        };
+
+        res.status(200).json({ message: "Reader logs", logs });
     } catch (err) {
         next(err);
     }
