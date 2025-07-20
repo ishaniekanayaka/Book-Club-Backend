@@ -11,13 +11,16 @@ export type Reader = {
     isActive?: boolean;
     createdAt?: Date;
     memberId?: string | null;
-}
+    createdBy?: string;
+    updatedBy?: string;
+    updatedAt?: Date;
+};
 
 const generateMemberId = (): string => {
     const year = new Date().getFullYear();
-    const randomDigits = Math.floor(10000 + Math.random() * 90000); // 5-digit random
+    const randomDigits = Math.floor(10000 + Math.random() * 90000);
     return `M-${year}-${randomDigits}`;
-}
+};
 
 const readerSchema = new mongoose.Schema<Reader>(
     {
@@ -70,6 +73,16 @@ const readerSchema = new mongoose.Schema<Reader>(
             unique: true,
             trim: true,
         },
+        createdBy: {
+            type: String,
+            required: true,
+        },
+        updatedBy: {
+            type: String,
+        },
+        updatedAt: {
+            type: Date,
+        },
     },
     {
         versionKey: false,
@@ -84,4 +97,3 @@ readerSchema.pre("save", function (next) {
 });
 
 export const ReaderModel = mongoose.model("Reader", readerSchema);
-

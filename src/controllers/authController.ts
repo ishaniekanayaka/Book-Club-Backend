@@ -7,7 +7,7 @@ import { UserModel } from "../models/User";
 
 const createAccessToken = (user: any) => {
     return jwt.sign(
-        { userId: user._id, role: user.role },
+        { userId: user._id, role: user.role, name: user.name },
         process.env.ACCESS_TOKEN_SECRET!,
         { expiresIn: "1d" }
     );
@@ -243,17 +243,6 @@ export const logout = async (
         next(err);
     }
 };
-
-
-export const getAllReaders = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const readers = await UserModel.find({ role: "reader", isActive: true }).select("-password");
-        res.status(200).json(readers);
-    } catch (err) {
-        next(err);
-    }
-};
-
 
 // ✅ Fixed: Updated to include 'admin' and 'staff' roles
 export const getAllStaff = async (req: Request, res: Response, next: NextFunction) => {
