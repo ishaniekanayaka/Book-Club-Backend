@@ -4,7 +4,7 @@ export type User = {
     name: string;
     email: string;
     password: string;
-    role: "staff" | "librarian" | "reader";
+    role: "staff" | "librarian";
     phone?: string;
     address?: string;
     dateOfBirth?: Date;
@@ -44,8 +44,8 @@ const userSchema = new mongoose.Schema<User>(
         },
         role: {
             type: String,
-            enum: ["staff", "librarian", "reader"],
-            default: "reader",
+            enum: ["staff", "librarian"],
+            default: "staff",
         },
         phone: {
             type: String,
@@ -92,9 +92,9 @@ const userSchema = new mongoose.Schema<User>(
 userSchema.pre("save", async function (next) {
     if (!this.memberId) {
         let prefix = "";
-        if (this.role === "reader") prefix = "Reader";
+        if (this.role === "staff") prefix = "Staff";
         else if (this.role === "librarian") prefix = "Librarian";
-        else if (this.role === "staff") prefix = "Staff";
+
         else prefix = "U"; // fallback if needed
 
         let newMemberId = generateMemberId(prefix);
