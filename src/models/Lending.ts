@@ -1,3 +1,4 @@
+/*
 import mongoose from "mongoose";
 
 export type LendingStatus = "borrowed" | "returned" | "overdue";
@@ -28,3 +29,31 @@ const lendingSchema = new mongoose.Schema<Lending>(
 );
 
 export const LendingModel = mongoose.model("Lending", lendingSchema);
+*/
+// models/Lending.ts
+import mongoose, { Schema, Document } from "mongoose";
+
+export interface ILending extends Document {
+    readerId: mongoose.Types.ObjectId;
+    bookId: mongoose.Types.ObjectId;
+    lendDate: Date;
+    dueDate: Date;
+    returnDate?: Date;
+    isReturned: boolean;
+    fineAmount?: number;
+}
+
+const LendingSchema = new Schema<ILending>({
+    readerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    bookId: { type: Schema.Types.ObjectId, ref: "Book", required: true },
+    lendDate: { type: Date, default: Date.now },
+    dueDate: { type: Date,
+        required: true,
+        default: () => new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
+    },
+    returnDate: { type: Date },
+    isReturned: { type: Boolean, default: false },
+    fineAmount: { type: Number, default: 0 },
+});
+
+export const LendingModel = mongoose.model<ILending>("Lending", LendingSchema);
