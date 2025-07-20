@@ -1,73 +1,99 @@
+// controllers/lendingController.ts
 import { Request, Response, NextFunction } from "express";
 import { LendingModel } from "../models/Lending";
-import { BookModel } from "../models/Book";
 import { ApiErrors } from "../errors/ApiErrors";
+import { BookModel } from "../models/Book";
 
+const DAILY_FINE = 15; // ₹15 per day
+
+// Lend a book
 export const lendBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { bookId, readerId, dueDate } = req.body;
+        const { readerId, bookId, dueDate } = req.body;
 
+        // Check if book exists and is available
         const book = await BookModel.findById(bookId);
-        if (!book || book.isDeleted) throw new ApiErrors(404, "Book not found");
-        if (book.copiesAvailable < 1) throw new ApiErrors(400, "No copies available");
+        if (!book || book.copiesAvailable <= 0) throw new ApiErrors(404, "Book not available");
 
-        const lending = await LendingModel.create({
-            book: bookId,
-            reader: readerId,
+        const lend = await LendingModel.create({
+            readerId,
+            bookId,
             dueDate,
         });
 
+        // Decrease book stock
         book.copiesAvailable -= 1;
         await book.save();
 
-        res.status(201).json({ message: "Book lent successfully", lending });
+        res.status(201).json({ message: "Book lent successfully", lend });
     } catch (err) {
         next(err);
     }
 };
 
+// Return a book
 export const returnBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { lendingId } = req.params;
-
-        const lending = await LendingModel.findById(lendingId).populate("book");
+        const { id } = req.params;
+        const lending = await LendingModel.findById(id);
         if (!lending) throw new ApiErrors(404, "Lending record not found");
 
-        if (lending.status === "returned")
-            throw new ApiErrors(400, "Book already returned");
+        if (lending.isReturned) return res.status(400).json({ message: "Book already returned" });
 
-        lending.status = "returned";
-        lending.returnDate = new Date();
+        const returnDate = new Date();
+        let fine = 0;
 
-        await lending.save();
-
-        const book = await BookModel.findById(lending.book);
-        if (book) {
-            book.copiesAvailable += 1;
-            await book.save();
+        if (returnDate > lending.dueDate) {
+            const daysLate = Math.ceil((+returnDate - +lending.dueDate) / (1000 * 60 * 60 * 24));
+            fine = daysLate * DAILY_FINE;
         }
 
-        res.status(200).json({ message: "Book returned successfully", lending });
+        lending.returnDate = returnDate;
+        lending.isReturned = true;
+        lending.fineAmount = fine;
+        await lending.save();
+
+        // Increase book stock
+        await BookModel.findByIdAndUpdate(lending.bookId, { $inc: { quantity: 1 } });
+
+        res.status(200).json({ message: "Book returned", lending });
     } catch (err) {
         next(err);
     }
 };
 
-export const getLendingHistoryByReader = async (req: Request, res: Response, next: NextFunction) => {
+// Get lending history by book
+export const getLendingsByBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const readerId = req.params.readerId;
-        const history = await LendingModel.find({ reader: readerId }).populate("book");
-        res.status(200).json(history);
+        const { bookId } = req.params;
+        const lendings = await LendingModel.find({ bookId }).populate("readerId", "name email");
+        res.status(200).json(lendings);
     } catch (err) {
         next(err);
     }
 };
 
-export const getLendingHistoryByBook = async (req: Request, res: Response, next: NextFunction) => {
+// Get lending history by reader
+export const getLendingsByReader = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const bookId = req.params.bookId;
-        const history = await LendingModel.find({ book: bookId }).populate("reader");
-        res.status(200).json(history);
+        const { readerId } = req.params;
+        const lendings = await LendingModel.find({ readerId }).populate("bookId", "title");
+        res.status(200).json(lendings);
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Overdue readers and books
+export const getOverdueLendings = async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+        const today = new Date();
+        const overdue = await LendingModel.find({
+            dueDate: { $lt: today },
+            isReturned: false,
+        }).populate("readerId bookId");
+
+        res.status(200).json({ message: "Overdue books", overdue });
     } catch (err) {
         next(err);
     }

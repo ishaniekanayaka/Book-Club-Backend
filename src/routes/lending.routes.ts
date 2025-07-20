@@ -1,19 +1,20 @@
-import { Router } from "express";
-
-import { authenticateToken } from "../middlewares/authenticateToken";
-import { authorizeRoles } from "../middlewares/verifyAccessToken";
+// routes/lendingRoutes.ts
+import express from "express";
 import {
-    getLendingHistoryByBook,
-    getLendingHistoryByReader,
+    getLendingsByBook,
+    getLendingsByReader,
+    getOverdueLendings,
     lendBook,
     returnBook
 } from "../controllers/LendingController";
 
-const router = Router();
 
-router.post("/lend", authenticateToken, authorizeRoles("librarian", "staff"), lendBook);
-router.put("/return/:lendingId", authenticateToken, authorizeRoles("librarian", "staff"), returnBook);
-router.get("/history/book/:bookId", authenticateToken, getLendingHistoryByBook);
-router.get("/history/reader/:readerId", authenticateToken, getLendingHistoryByReader);
+const router = express.Router();
+
+router.post("/lend", lendBook);
+router.put("/return/:id", returnBook);
+router.get("/book/:bookId", getLendingsByBook);
+router.get("/reader/:readerId", getLendingsByReader);
+router.get("/overdue", getOverdueLendings);
 
 export default router;
