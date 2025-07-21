@@ -44,7 +44,7 @@ export interface ILending extends Document {
 }
 
 const LendingSchema = new Schema<ILending>({
-    readerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    readerId: { type: Schema.Types.ObjectId, ref: "Reader", required: true },
     bookId: { type: Schema.Types.ObjectId, ref: "Book", required: true },
     lendDate: { type: Date, default: Date.now },
     /*dueDate: { type: Date,
