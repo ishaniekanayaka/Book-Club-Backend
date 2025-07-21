@@ -47,10 +47,16 @@ const LendingSchema = new Schema<ILending>({
     readerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     bookId: { type: Schema.Types.ObjectId, ref: "Book", required: true },
     lendDate: { type: Date, default: Date.now },
-    dueDate: { type: Date,
+    /*dueDate: { type: Date,
         required: true,
         default: () => new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
+    },*/
+    dueDate: {
+        type: Date,
+        required: true,
+        default: () => new Date(Date.now() + 4 * 60 * 1000), // 4 minutes from now
     },
+
     returnDate: { type: Date },
     isReturned: { type: Boolean, default: false },
     fineAmount: { type: Number, default: 0 },

@@ -1,29 +1,61 @@
-// controllers/lendingController.ts
 import { Request, Response, NextFunction } from "express";
 import { LendingModel } from "../models/Lending";
 import { ApiErrors } from "../errors/ApiErrors";
 import { BookModel } from "../models/Book";
+import { sendOverdueEmail } from "../utils/sendEmail";
 
-const DAILY_FINE = 15; // ₹15 per day
+import {ReaderModel} from "../models/Reader";
+
+const DEFAULT_DUE_MINUTES = 4;
+const FINE_PER_10_MIN_BLOCK = 5;
 
 // Lend a book
 export const lendBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { readerId, bookId, dueDate } = req.body;
 
-        // Check if book exists and is available
+        // Validate book
         const book = await BookModel.findById(bookId);
-        if (!book || book.copiesAvailable <= 0) throw new ApiErrors(404, "Book not available");
+        if (!book || book.copiesAvailable <= 0) {
+            throw new ApiErrors(404, "Book not available");
+        }
+
+        // Validate reader
+        const reader = await ReaderModel.findById(readerId);
+        if (!reader) throw new ApiErrors(404, "Reader not found");
+
+        const lendDate = new Date();
+        const finalDueDate = dueDate
+            ? new Date(dueDate)
+            : new Date(lendDate.getTime() + DEFAULT_DUE_MINUTES * 60 * 1000);
 
         const lend = await LendingModel.create({
             readerId,
             bookId,
-            dueDate,
+            lendDate,
+            dueDate: finalDueDate,
         });
 
         // Decrease book stock
         book.copiesAvailable -= 1;
         await book.save();
+
+        // Schedule reminder 1 minute before dueDate
+        const msUntilReminder = finalDueDate.getTime() - Date.now() - 60 * 1000;
+
+        if (msUntilReminder > 0) {
+            setTimeout(async () => {
+                const updatedLending = await LendingModel.findById(lend._id);
+                if (updatedLending && !updatedLending.isReturned) {
+                    await sendOverdueEmail(
+                        reader.email,
+                        reader.fullName,
+                        book.title,
+                        finalDueDate
+                    );
+                }
+            }, msUntilReminder);
+        }
 
         res.status(201).json({ message: "Book lent successfully", lend });
     } catch (err) {
@@ -38,14 +70,22 @@ export const returnBook = async (req: Request, res: Response, next: NextFunction
         const lending = await LendingModel.findById(id);
         if (!lending) throw new ApiErrors(404, "Lending record not found");
 
-        if (lending.isReturned) return res.status(400).json({ message: "Book already returned" });
+        if (lending.isReturned) {
+            return res.status(400).json({ message: "Book already returned" });
+        }
 
         const returnDate = new Date();
         let fine = 0;
 
+        // Fine logic based on minutes
         if (returnDate > lending.dueDate) {
-            const daysLate = Math.ceil((+returnDate - +lending.dueDate) / (1000 * 60 * 60 * 24));
-            fine = daysLate * DAILY_FINE;
+            const msLate = returnDate.getTime() - lending.dueDate.getTime();
+            const minutesLate = Math.ceil(msLate / (1000 * 60));
+
+            if (minutesLate >= 1) {
+                const tenMinBlocks = Math.ceil(minutesLate / 10);
+                fine = tenMinBlocks * FINE_PER_10_MIN_BLOCK;
+            }
         }
 
         lending.returnDate = returnDate;
@@ -54,7 +94,7 @@ export const returnBook = async (req: Request, res: Response, next: NextFunction
         await lending.save();
 
         // Increase book stock
-        await BookModel.findByIdAndUpdate(lending.bookId, { $inc: { quantity: 1 } });
+        await BookModel.findByIdAndUpdate(lending.bookId, { $inc: { copiesAvailable: 1 } });
 
         res.status(200).json({ message: "Book returned", lending });
     } catch (err) {
@@ -84,12 +124,12 @@ export const getLendingsByReader = async (req: Request, res: Response, next: Nex
     }
 };
 
-// Overdue readers and books
+// Get overdue lendings
 export const getOverdueLendings = async (_req: Request, res: Response, next: NextFunction) => {
     try {
-        const today = new Date();
+        const now = new Date();
         const overdue = await LendingModel.find({
-            dueDate: { $lt: today },
+            dueDate: { $lt: now },
             isReturned: false,
         }).populate("readerId bookId");
 
