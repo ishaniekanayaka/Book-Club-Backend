@@ -34,3 +34,17 @@ export const sendOverdueEmail = async (to: string, name: string, bookTitle: stri
     };
     await transporter.sendMail(mailOptions);
 };
+
+
+export const sendOtpEmail = async (to: string, otp: string) => {
+    const mailOptions = {
+        from: `"Book Club" <${process.env.EMAIL_USER}>`,
+        to,
+        subject: "Reset Password - OTP Verification",
+        html: `<p>Your OTP for resetting the password is:</p>
+               <h2>${otp}</h2>
+               <p>This OTP is valid for 10 minutes only.</p>`,
+    };
+    await transporter.sendMail(mailOptions);
+};
+
