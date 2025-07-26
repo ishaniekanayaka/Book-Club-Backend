@@ -133,3 +133,26 @@ export const getReaderLogs = async (req: Request, res: Response, next: NextFunct
         next(err);
     }
 };
+
+export const getReaderByMemberIdOrNIC = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { keyword } = req.params;
+
+        const reader = await ReaderModel.findOne({
+            $or: [
+                { memberId: keyword },
+                { nic: keyword }
+            ],
+            isActive: true
+        });
+
+        if (!reader) {
+            throw new ApiErrors(404, "Reader not found");
+        }
+
+        res.status(200).json(reader);
+    } catch (err) {
+        next(err);
+    }
+};
+
