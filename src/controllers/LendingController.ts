@@ -156,19 +156,23 @@ export const getAllLendings = async (_req: Request, res: Response, next: NextFun
     }
 };
 
-
 export const getReturnedOverdueLendings = async (_req: Request, res: Response, next: NextFunction) => {
     try {
-        const returnedOverdues = await LendingModel.find({
-            isReturned: true,
-            returnDate: { $gt: "$dueDate" } // actual overdue returns
-        })
+        const allReturned = await LendingModel.find({ isReturned: true })
             .populate("readerId", "fullName email")
             .populate("bookId", "title isbn");
+
+        const returnedOverdues = allReturned.filter(
+            (lending) =>
+                lending.returnDate &&
+                lending.dueDate &&
+                new Date(lending.returnDate) > new Date(lending.dueDate)
+        );
 
         res.status(200).json(returnedOverdues);
     } catch (err) {
         next(err);
     }
 };
+
 
