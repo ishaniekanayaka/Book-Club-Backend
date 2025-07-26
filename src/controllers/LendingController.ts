@@ -7,16 +7,16 @@ import { sendOverdueEmail } from "../utils/sendEmail";
 
 const DEFAULT_DUE_MINUTES = 4;
 const FINE_PER_10_MIN_BLOCK = 5;
-
-
 export const lendBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { nic, isbn, dueDate } = req.body;
+        const { nic, memberId, isbn, dueDate } = req.body;
 
+        // Find reader using either nic or memberId
+        const reader = await ReaderModel.findOne({
+            $or: [{ nic }, { memberId }],
+        });
 
-        const reader = await ReaderModel.findOne({ nic });
         if (!reader) throw new ApiErrors(404, "Reader not found");
-
 
         const book = await BookModel.findOne({ isbn });
         if (!book || book.copiesAvailable <= 0) {
@@ -38,6 +38,7 @@ export const lendBook = async (req: Request, res: Response, next: NextFunction) 
         book.copiesAvailable -= 1;
         await book.save();
 
+        // Reminder email logic
         const msUntilReminder = finalDueDate.getTime() - Date.now() - 60 * 1000;
         if (msUntilReminder > 0) {
             setTimeout(async () => {
@@ -59,7 +60,6 @@ export const lendBook = async (req: Request, res: Response, next: NextFunction) 
         next(err);
     }
 };
-
 
 export const returnBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
