@@ -10,7 +10,7 @@ const readerRouter = Router();
 readerRouter.post("/add", authenticateToken, authorizeRoles("staff", "librarian"), upload.single("profileImage"), createReader);
 readerRouter.get("/all", authenticateToken, authorizeRoles("staff", "librarian"), getAllReaders);
 readerRouter.put("/:id", authenticateToken, authorizeRoles("staff", "librarian"), upload.single("profileImage"), updateReader);
-readerRouter.delete("/:id", authenticateToken, authorizeRoles("staff", "librarian"), deleteReader);
+readerRouter.delete("/:id", authenticateToken, authorizeRoles("librarian"), deleteReader);
 readerRouter.get("/:id/logs", getReaderLogs);
 
 export default readerRouter;

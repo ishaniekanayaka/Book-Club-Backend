@@ -44,7 +44,7 @@ export const addBook = async (req: Request, res: Response, next: NextFunction) =
     }
 };
 
-
+/*
 export const getAllBooks = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { genre } = req.query;
@@ -56,7 +56,24 @@ export const getAllBooks = async (req: Request, res: Response, next: NextFunctio
     } catch (err) {
         next(err);
     }
+};*/
+
+export const getAllBooks = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { genre, title, isbn } = req.query;
+        const filter: any = { isDeleted: false };
+
+        if (genre) filter.genre = genre;
+        if (title) filter.title = { $regex: title, $options: "i" }; // partial match (case-insensitive)
+        if (isbn) filter.isbn = { $regex: isbn, $options: "i" };   // partial match (case-insensitive)
+
+        const books = await BookModel.find(filter).sort({ createdAt: -1 });
+        res.status(200).json(books);
+    } catch (err) {
+        next(err);
+    }
 };
+
 
 
 export const getBookById = async (req: Request, res: Response, next: NextFunction) => {
@@ -142,3 +159,4 @@ export const getGenres = async (req: Request, res: Response, next: NextFunction)
         next(err);
     }
 };
+
