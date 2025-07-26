@@ -1,13 +1,13 @@
-// routes/lendingRoutes.ts
+
 import express from "express";
 import {
+    getAllLendings,
     getLendingsByBook,
     getLendingsByReader,
-    getOverdueLendings,
+    getOverdueLendings, getReturnedOverdueLendings,
     lendBook,
     returnBook
 } from "../controllers/LendingController";
-
 
 const router = express.Router();
 
@@ -16,5 +16,7 @@ router.put("/return/:id", returnBook);
 router.get("/book/:isbn", getLendingsByBook);
 router.get("/reader/:readerId", getLendingsByReader);
 router.get("/overdue", getOverdueLendings);
+router.get("/all",getAllLendings)
+router.get("/returned", getReturnedOverdueLendings);
 
 export default router;
