@@ -32,11 +32,9 @@ const logAudit = async (
 export const createReader = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { name } = getUserFromToken(req);
-        const profileImage = req.file?.path;
 
         const reader = new ReaderModel({
             ...req.body,
-            profileImage,
             createdBy: name,
             createdAt: new Date(),
         });
@@ -65,11 +63,9 @@ export const updateReader = async (req: Request, res: Response, next: NextFuncti
     try {
         const { name } = getUserFromToken(req);
         const { id } = req.params;
-        const profileImage = req.file?.path;
 
         const update = {
             ...req.body,
-            ...(profileImage && { profileImage }),
             updatedBy: name,
             updatedAt: new Date(),
         };

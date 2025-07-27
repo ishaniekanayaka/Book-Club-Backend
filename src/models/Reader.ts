@@ -7,7 +7,7 @@ export type Reader = {
     phone: string;
     address: string;
     dateOfBirth: Date;
-    profileImage?: string;
+    // profileImage field removed
     isActive?: boolean;
     createdAt?: Date;
     memberId?: string | null;
@@ -58,10 +58,7 @@ const readerSchema = new mongoose.Schema<Reader>(
             type: Date,
             required: [true, "Date of Birth is required"],
         },
-        profileImage: {
-            type: String,
-            trim: true,
-        },
+        // profileImage removed
         isActive: {
             type: Boolean,
             default: true,
@@ -91,7 +88,6 @@ const readerSchema = new mongoose.Schema<Reader>(
         deletedAt: {
             type: Date,
         },
-
     },
     {
         versionKey: false,
