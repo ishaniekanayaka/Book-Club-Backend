@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { ApiErrors } from "../errors/ApiErrors";
 import jwt from "jsonwebtoken";
-import {ReaderModel} from "../models/Reader";
-import {sendWelcomeEmail} from "../utils/sendEmail";
-
+import { ReaderModel } from "../models/Reader";
+import { sendWelcomeEmail } from "../utils/sendEmail";
+import { AuditLogModel } from "../models/AuditLog";
 
 const getUserFromToken = (req: Request) => {
     const authHeader = req.headers["authorization"];
@@ -11,6 +11,22 @@ const getUserFromToken = (req: Request) => {
     if (!token) throw new ApiErrors(401, "Unauthorized: No token");
     const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET as string) as any;
     return { userId: decoded.userId, role: decoded.role, name: decoded.name };
+};
+
+const logAudit = async (
+    action: "CREATE" | "UPDATE" | "DELETE" | "LEND" | "RETURN" | "LOGIN" | "OTHER",
+    performedBy: string,
+    entityType: string,
+    entityId: string,
+    details?: string
+) => {
+    await AuditLogModel.create({
+        action,
+        performedBy,
+        entityType,
+        entityId,
+        details,
+    });
 };
 
 export const createReader = async (req: Request, res: Response, next: NextFunction) => {
@@ -26,6 +42,9 @@ export const createReader = async (req: Request, res: Response, next: NextFuncti
         });
 
         await reader.save();
+
+        // Audit log for create
+        await logAudit("CREATE", name, "Reader", reader._id.toString(), `Reader '${reader.fullName}' created`);
 
         // Send welcome email if reader isActive = true
         if (reader.isActive && reader.email) {
@@ -58,12 +77,16 @@ export const updateReader = async (req: Request, res: Response, next: NextFuncti
         const updated = await ReaderModel.findByIdAndUpdate(id, update, { new: true });
         if (!updated) throw new ApiErrors(404, "Reader not found");
 
+        // Audit log for update
+        await logAudit("UPDATE", name, "Reader", id, `Reader '${updated.fullName}' updated`);
+
         res.status(200).json({ message: "Reader updated", updated });
     } catch (err) {
         next(err);
     }
 };
-export const getAllReaders = async (req: Request, res: Response, next: NextFunction) => {
+
+export const getAllReaders = async (_req: Request, res: Response, next: NextFunction) => {
     try {
         const readers = await ReaderModel.find({ isActive: true });
         res.status(200).json(readers);
@@ -76,12 +99,17 @@ export const deleteReader = async (req: Request, res: Response, next: NextFuncti
     try {
         const { name } = getUserFromToken(req);
         const { id } = req.params;
+
         const deleted = await ReaderModel.findByIdAndUpdate(
             id,
             { isActive: false, deletedBy: name, deletedAt: new Date() },
             { new: true }
         );
         if (!deleted) throw new ApiErrors(404, "Reader not found");
+
+        // Audit log for soft delete
+        await logAudit("DELETE", name, "Reader", id, `Reader '${deleted.fullName}' soft deleted`);
+
         res.status(200).json({ message: "Reader soft deleted", deleted });
     } catch (err) {
         next(err);
@@ -130,4 +158,3 @@ export const getReaderByMemberIdOrNIC = async (req: Request, res: Response, next
         next(err);
     }
 };
-
