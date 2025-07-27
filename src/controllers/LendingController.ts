@@ -4,6 +4,16 @@ import { ApiErrors } from "../errors/ApiErrors";
 import { BookModel } from "../models/Book";
 import { ReaderModel } from "../models/Reader";
 import {sendOverdueEmail} from "../utils/sendEmail";
+import jwt from "jsonwebtoken";
+
+const getUserFromToken = (req: Request) => {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+    if (!token) throw new ApiErrors(401, "Unauthorized: No token");
+    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET as string) as any;
+    return { userId: decoded.userId, role: decoded.role, name: decoded.name };
+};
+
 
 const DEFAULT_DUE_MINUTES = 4;
 const FINE_PER_10_MIN_BLOCK = 5;
@@ -11,7 +21,7 @@ const FINE_PER_10_MIN_BLOCK = 5;
 export const lendBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { nic, memberId, isbn, dueDate } = req.body;
-
+        const { name } = getUserFromToken(req);
         // Find reader using either NIC or memberId
         const reader = await ReaderModel.findOne({
             $or: [{ nic }, { memberId }],
@@ -34,6 +44,8 @@ export const lendBook = async (req: Request, res: Response, next: NextFunction) 
             bookId: book._id,
             lendDate,
             dueDate: finalDueDate,
+            lendBy: name,
+            lendAt: new Date(),
         });
 
         book.copiesAvailable -= 1;
@@ -63,6 +75,7 @@ export const lendBook = async (req: Request, res: Response, next: NextFunction) 
 
 export const returnBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        const { name } = getUserFromToken(req);
         const { id } = req.params;
         const lending = await LendingModel.findById(id);
         if (!lending) throw new ApiErrors(404, "Lending record not found");

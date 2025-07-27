@@ -12,31 +12,6 @@ const getUserFromToken = (req: Request) => {
     const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET as string) as any;
     return { userId: decoded.userId, role: decoded.role, name: decoded.name };
 };
-/*
-
-export const createReader = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const { name } = getUserFromToken(req);
-        const profileImage = req.file?.path;
-
-        const reader = new ReaderModel({
-            ...req.body,
-            profileImage,
-            createdBy: name,
-            createdAt: new Date(),
-        });
-
-        await reader.save();
-        res.status(201).json({ message: "Reader added", reader });
-    } catch (err: any) {
-        if (err.name === "ValidationError") {
-            const messages = Object.values(err.errors).map((val: any) => val.message);
-            return next(new ApiErrors(400, messages.join(", ")));
-        }
-        next(err);
-    }
-};
-*/
 
 export const createReader = async (req: Request, res: Response, next: NextFunction) => {
     try {
