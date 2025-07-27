@@ -237,7 +237,9 @@ export const getLoggedInUser = async (
         const user = await UserModel.findById(userId).select("-password");
         if (!user) throw new ApiErrors(404, "User not found");
 
-        res.status(200).json({ message: "User fetched", user });
+        //res.status(200).json({ message: "User fetched", user });
+        res.status(200).json(user);
+
     } catch (err) {
         next(err);
     }
