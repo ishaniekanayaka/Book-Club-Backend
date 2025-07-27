@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface ILending extends Document {
+    _id: string;
     readerId: mongoose.Types.ObjectId;
     bookId: mongoose.Types.ObjectId;
     lendDate: Date;

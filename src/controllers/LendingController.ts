@@ -3,8 +3,9 @@ import { LendingModel } from "../models/Lending";
 import { ApiErrors } from "../errors/ApiErrors";
 import { BookModel } from "../models/Book";
 import { ReaderModel } from "../models/Reader";
-import {sendOverdueEmail} from "../utils/sendEmail";
+import { sendOverdueEmail } from "../utils/sendEmail";
 import jwt from "jsonwebtoken";
+import { AuditLogModel } from "../models/AuditLog";
 
 const getUserFromToken = (req: Request) => {
     const authHeader = req.headers["authorization"];
@@ -14,6 +15,21 @@ const getUserFromToken = (req: Request) => {
     return { userId: decoded.userId, role: decoded.role, name: decoded.name };
 };
 
+const logAudit = async (
+    action: "CREATE" | "UPDATE" | "DELETE" | "LEND" | "RETURN" | "LOGIN" | "OTHER",
+    performedBy: string,
+    entityType: string,
+    entityId: string,
+    details?: string
+) => {
+    await AuditLogModel.create({
+        action,
+        performedBy,
+        entityType,
+        entityId,
+        details,
+    });
+};
 
 const DEFAULT_DUE_MINUTES = 4;
 const FINE_PER_10_MIN_BLOCK = 5;
@@ -22,11 +38,8 @@ export const lendBook = async (req: Request, res: Response, next: NextFunction) 
     try {
         const { nic, memberId, isbn, dueDate } = req.body;
         const { name } = getUserFromToken(req);
-        // Find reader using either NIC or memberId
-        const reader = await ReaderModel.findOne({
-            $or: [{ nic }, { memberId }],
-        });
 
+        const reader = await ReaderModel.findOne({ $or: [{ nic }, { memberId }] });
         if (!reader) throw new ApiErrors(404, "Reader not found");
 
         const book = await BookModel.findOne({ isbn });
@@ -35,9 +48,7 @@ export const lendBook = async (req: Request, res: Response, next: NextFunction) 
         }
 
         const lendDate = new Date();
-        const finalDueDate = dueDate
-            ? new Date(dueDate)
-            : new Date(lendDate.getTime() + DEFAULT_DUE_MINUTES * 60 * 1000);
+        const finalDueDate = dueDate ? new Date(dueDate) : new Date(lendDate.getTime() + DEFAULT_DUE_MINUTES * 60 * 1000);
 
         const lend = await LendingModel.create({
             readerId: reader._id,
@@ -51,17 +62,14 @@ export const lendBook = async (req: Request, res: Response, next: NextFunction) 
         book.copiesAvailable -= 1;
         await book.save();
 
-        // Reminder email logic
-        const msUntilReminder = finalDueDate.getTime() - Date.now() - 60 * 1000; // 1 minute before due
+        await logAudit("LEND", name, "Lending", lend._id.toString(), `Book '${book.title}' lent to '${reader.fullName}'`);
+
+        const msUntilReminder = finalDueDate.getTime() - Date.now() - 60 * 1000;
         if (msUntilReminder > 0) {
             setTimeout(async () => {
                 const updated = await LendingModel.findById(lend._id);
                 if (updated && !updated.isReturned) {
-                    await sendOverdueEmail(
-                        reader.email,
-                        reader.fullName,
-                        [{ title: book.title, dueDate: finalDueDate }]
-                    );
+                    await sendOverdueEmail(reader.email, reader.fullName, [{ title: book.title, dueDate: finalDueDate }]);
                     console.log(`📧 Reminder sent for lending ${lend._id}`);
                 }
             }, msUntilReminder);
@@ -72,6 +80,7 @@ export const lendBook = async (req: Request, res: Response, next: NextFunction) 
         next(err);
     }
 };
+
 export const returnBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { name } = getUserFromToken(req);
@@ -94,7 +103,6 @@ export const returnBook = async (req: Request, res: Response, next: NextFunction
             fine = tenMinBlocks * FINE_PER_10_MIN_BLOCK;
         }
 
-        // Set audit fields
         lending.returnDate = returnDate;
         lending.returnAt = returnDate;
         lending.returnBy = name;
@@ -103,6 +111,8 @@ export const returnBook = async (req: Request, res: Response, next: NextFunction
 
         await lending.save();
         await BookModel.findByIdAndUpdate(lending.bookId, { $inc: { copiesAvailable: 1 } });
+
+        await logAudit("RETURN", name, "Lending", id, `Book returned by reader '${lending.readerId}'`);
 
         res.status(200).json({
             message: "Book returned",
@@ -116,25 +126,19 @@ export const returnBook = async (req: Request, res: Response, next: NextFunction
                 fineAmount: lending.fineAmount,
                 lendBy: lending.lendBy,
                 lendAt: lending.lendAt,
-            }
+            },
         });
     } catch (err) {
         next(err);
     }
 };
 
-
 export const getLendingsByBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { isbn } = req.params;
-
-        // Step 1: Find the book by ISBN
         const book = await BookModel.findOne({ isbn });
-        if (!book) {
-            throw new ApiErrors(404, "Book not found with the given ISBN");
-        }
+        if (!book) throw new ApiErrors(404, "Book not found with the given ISBN");
 
-        // Step 2: Use the book ID to find lendings
         const lendings = await LendingModel.find({ bookId: book._id })
             .populate("readerId", "fullName email")
             .populate("bookId", "title");
@@ -145,8 +149,6 @@ export const getLendingsByBook = async (req: Request, res: Response, next: NextF
     }
 };
 
-
-
 export const getLendingsByReader = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { readerId } = req.params;
@@ -156,7 +158,6 @@ export const getLendingsByReader = async (req: Request, res: Response, next: Nex
         next(err);
     }
 };
-
 
 export const getOverdueLendings = async (_req: Request, res: Response, next: NextFunction) => {
     try {
@@ -202,7 +203,6 @@ export const getReturnedOverdueLendings = async (_req: Request, res: Response, n
     }
 };
 
-
 export const sendOverdueNotifications = async (_req: Request, res: Response, next: NextFunction) => {
     try {
         const now = new Date();
@@ -213,9 +213,7 @@ export const sendOverdueNotifications = async (_req: Request, res: Response, nex
             .populate("readerId")
             .populate("bookId");
 
-        // Group by readerId
-        const readerMap: Map<string, { email: string; name: string; books: { title: string; dueDate: Date }[] }> =
-            new Map();
+        const readerMap: Map<string, { email: string; name: string; books: { title: string; dueDate: Date }[] }> = new Map();
 
         overdueLendings.forEach((lending) => {
             const reader: any = lending.readerId;
@@ -235,7 +233,6 @@ export const sendOverdueNotifications = async (_req: Request, res: Response, nex
             });
         });
 
-        // Send emails
         for (const [_, { email, name, books }] of readerMap.entries()) {
             await sendOverdueEmail(email, name, books);
             console.log(`📧 Overdue email sent to ${name}`);
