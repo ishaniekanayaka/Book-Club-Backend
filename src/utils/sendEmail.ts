@@ -20,7 +20,7 @@ export const sendWelcomeEmail = async (to: string, name: string) => {
     };
     await transporter.sendMail(mailOptions);
 };
-
+/*
 export const sendOverdueEmail = async (to: string, name: string, bookTitle: string, dueDate: Date) => {
     const formattedDate = dueDate.toLocaleDateString();
     const mailOptions = {
@@ -33,7 +33,7 @@ export const sendOverdueEmail = async (to: string, name: string, bookTitle: stri
                <p>Thank you,<br/>– The Book Club Team</p>`,
     };
     await transporter.sendMail(mailOptions);
-};
+};*/
 
 
 export const sendOtpEmail = async (to: string, otp: string) => {
@@ -48,3 +48,28 @@ export const sendOtpEmail = async (to: string, otp: string) => {
     await transporter.sendMail(mailOptions);
 };
 
+export const sendOverdueEmail = async (
+    to: string,
+    name: string,
+    books: { title: string; dueDate: Date }[]
+) => {
+    const bookListHTML = books
+        .map(
+            (book) =>
+                `<li><strong>${book.title}</strong> — Due on <strong>${book.dueDate.toLocaleDateString()}</strong></li>`
+        )
+        .join("");
+
+    const mailOptions = {
+        from: `"Book Club" <${process.env.EMAIL_USER}>`,
+        to,
+        subject: "⏰ Overdue Book Reminder",
+        html: `<p>Dear ${name},</p>
+               <p>The following book(s) you borrowed are overdue:</p>
+               <ul>${bookListHTML}</ul>
+               <p>Please return them as soon as possible to avoid further fines.</p>
+               <p>Thank you,<br/>– The Book Club Team</p>`,
+    };
+
+    await transporter.sendMail(mailOptions);
+};

@@ -3,15 +3,16 @@ import { LendingModel } from "../models/Lending";
 import { ApiErrors } from "../errors/ApiErrors";
 import { BookModel } from "../models/Book";
 import { ReaderModel } from "../models/Reader";
-import { sendOverdueEmail } from "../utils/sendEmail";
+import {sendOverdueEmail} from "../utils/sendEmail";
 
 const DEFAULT_DUE_MINUTES = 4;
 const FINE_PER_10_MIN_BLOCK = 5;
+
 export const lendBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { nic, memberId, isbn, dueDate } = req.body;
 
-        // Find reader using either nic or memberId
+        // Find reader using either NIC or memberId
         const reader = await ReaderModel.findOne({
             $or: [{ nic }, { memberId }],
         });
@@ -39,7 +40,7 @@ export const lendBook = async (req: Request, res: Response, next: NextFunction) 
         await book.save();
 
         // Reminder email logic
-        const msUntilReminder = finalDueDate.getTime() - Date.now() - 60 * 1000;
+        const msUntilReminder = finalDueDate.getTime() - Date.now() - 60 * 1000; // 1 minute before due
         if (msUntilReminder > 0) {
             setTimeout(async () => {
                 const updated = await LendingModel.findById(lend._id);
@@ -47,8 +48,7 @@ export const lendBook = async (req: Request, res: Response, next: NextFunction) 
                     await sendOverdueEmail(
                         reader.email,
                         reader.fullName,
-                        book.title,
-                        finalDueDate
+                        [{ title: book.title, dueDate: finalDueDate }]
                     );
                     console.log(`📧 Reminder sent for lending ${lend._id}`);
                 }
@@ -176,3 +176,46 @@ export const getReturnedOverdueLendings = async (_req: Request, res: Response, n
 };
 
 
+export const sendOverdueNotifications = async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+        const now = new Date();
+        const overdueLendings = await LendingModel.find({
+            dueDate: { $lt: now },
+            isReturned: false,
+        })
+            .populate("readerId")
+            .populate("bookId");
+
+        // Group by readerId
+        const readerMap: Map<string, { email: string; name: string; books: { title: string; dueDate: Date }[] }> =
+            new Map();
+
+        overdueLendings.forEach((lending) => {
+            const reader: any = lending.readerId;
+            const book: any = lending.bookId;
+
+            if (!readerMap.has(reader._id.toString())) {
+                readerMap.set(reader._id.toString(), {
+                    email: reader.email,
+                    name: reader.fullName,
+                    books: [],
+                });
+            }
+
+            readerMap.get(reader._id.toString())?.books.push({
+                title: book.title,
+                dueDate: lending.dueDate,
+            });
+        });
+
+        // Send emails
+        for (const [_, { email, name, books }] of readerMap.entries()) {
+            await sendOverdueEmail(email, name, books);
+            console.log(`📧 Overdue email sent to ${name}`);
+        }
+
+        res.status(200).json({ message: "Overdue notifications sent successfully", count: readerMap.size });
+    } catch (err) {
+        next(err);
+    }
+};

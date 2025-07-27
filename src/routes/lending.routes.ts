@@ -6,7 +6,7 @@ import {
     getLendingsByReader,
     getOverdueLendings, getReturnedOverdueLendings,
     lendBook,
-    returnBook
+    returnBook, sendOverdueNotifications
 } from "../controllers/LendingController";
 
 const router = express.Router();
@@ -18,5 +18,6 @@ router.get("/reader/:readerId", getLendingsByReader);
 router.get("/overdue", getOverdueLendings);
 router.get("/all",getAllLendings)
 router.get("/returned", getReturnedOverdueLendings);
+router.post("/notify-overdues", sendOverdueNotifications);
 
 export default router;
