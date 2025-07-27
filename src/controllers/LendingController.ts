@@ -72,11 +72,11 @@ export const lendBook = async (req: Request, res: Response, next: NextFunction) 
         next(err);
     }
 };
-
 export const returnBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { name } = getUserFromToken(req);
         const { id } = req.params;
+
         const lending = await LendingModel.findById(id);
         if (!lending) throw new ApiErrors(404, "Lending record not found");
 
@@ -87,7 +87,6 @@ export const returnBook = async (req: Request, res: Response, next: NextFunction
         const returnDate = new Date();
         let fine = 0;
 
-
         if (returnDate > lending.dueDate) {
             const msLate = returnDate.getTime() - lending.dueDate.getTime();
             const minutesLate = Math.ceil(msLate / (1000 * 60));
@@ -95,15 +94,30 @@ export const returnBook = async (req: Request, res: Response, next: NextFunction
             fine = tenMinBlocks * FINE_PER_10_MIN_BLOCK;
         }
 
+        // Set audit fields
         lending.returnDate = returnDate;
+        lending.returnAt = returnDate;
+        lending.returnBy = name;
         lending.isReturned = true;
         lending.fineAmount = fine;
+
         await lending.save();
-
-
         await BookModel.findByIdAndUpdate(lending.bookId, { $inc: { copiesAvailable: 1 } });
 
-        res.status(200).json({ message: "Book returned", lending });
+        res.status(200).json({
+            message: "Book returned",
+            lending: {
+                _id: lending._id,
+                lendDate: lending.lendDate,
+                dueDate: lending.dueDate,
+                returnDate: lending.returnDate,
+                returnAt: lending.returnAt,
+                returnBy: lending.returnBy,
+                fineAmount: lending.fineAmount,
+                lendBy: lending.lendBy,
+                lendAt: lending.lendAt,
+            }
+        });
     } catch (err) {
         next(err);
     }
