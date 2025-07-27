@@ -10,6 +10,10 @@ export type Book = {
     copiesAvailable: number;
     backCover?: string;
     isDeleted?: boolean;
+    createdBy?: string;
+    updatedBy?: string;
+    deletedBy?: string;
+    deletedAt?: Date;
 };
 
 const generateISBN = (): string => {
@@ -38,6 +42,10 @@ const bookSchema = new mongoose.Schema<Book>(
             match: [/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif)$/, "Must be a valid image URL"],
         },
         isDeleted: { type: Boolean, default: false },
+        createdBy: { type: String }, // User ID or name
+        updatedBy: { type: String },
+        deletedBy: { type: String },
+        deletedAt: { type: Date },
     },
     { versionKey: false, timestamps: true }
 );
