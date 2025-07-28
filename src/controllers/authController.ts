@@ -408,3 +408,27 @@ export const resetPassword = async (req: Request, res: Response) => {
 
     res.status(200).json({ message: "Password reset successful" });
 };
+
+
+export const searchUsers = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { query } = req.query;
+
+        if (!query || typeof query !== "string") {
+            return res.status(400).json({ message: "Search query is required" });
+        }
+
+        const users = await UserModel.find({
+            isActive: true,
+            $or: [
+                { memberId: { $regex: query, $options: "i" } },
+                { name: { $regex: query, $options: "i" } },
+                { nic: { $regex: query, $options: "i" } },
+            ],
+        }).select("-password");
+
+        res.status(200).json(users);
+    } catch (err) {
+        next(err);
+    }
+};

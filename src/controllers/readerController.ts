@@ -84,7 +84,7 @@ export const updateReader = async (req: Request, res: Response, next: NextFuncti
 
 export const getAllReaders = async (_req: Request, res: Response, next: NextFunction) => {
     try {
-        const readers = await ReaderModel.find({ isActive: true });
+        const readers = await ReaderModel.find();
         res.status(200).json(readers);
     } catch (err) {
         next(err);

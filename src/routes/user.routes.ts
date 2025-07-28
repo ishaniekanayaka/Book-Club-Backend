@@ -6,7 +6,7 @@ import {
     getLoggedInUser,
     login,
     logout,
-    refreshToken, resetPassword,
+    refreshToken, resetPassword, searchUsers,
     signUp, updateUser, updateUserRole, verifyOtp
 } from "../controllers/authController";
 import {authenticateToken} from "../middlewares/authenticateToken";
@@ -25,6 +25,8 @@ userRouter.get("/refresh-token", refreshToken);
 userRouter.get("/staff", authenticateToken, authorizeRoles("staff", "librarian"), getAllStaff);
 userRouter.put("/update/:id", authenticateToken,upload.single("profileImage"), authorizeRoles("staff", "librarian"), updateUser);
 userRouter.put("/role/:id", authenticateToken, authorizeRoles("librarian"), updateUserRole);
+userRouter.get("/search", authenticateToken, authorizeRoles("staff", "librarian"), searchUsers);
+
 
 userRouter.post("/forgot-password", forgotPassword);
 userRouter.post("/verify-otp", verifyOtp);
