@@ -8,9 +8,11 @@ import {
     lendBook,
     returnBook, sendOverdueNotifications
 } from "../controllers/LendingController";
+import {authenticateToken} from "../middlewares/authenticateToken";
+import {authorizeRoles} from "../middlewares/verifyAccessToken";
 
 const router = express.Router();
-
+router.use(authenticateToken, authorizeRoles("staff", "librarian"))
 router.post("/lend", lendBook);
 router.put("/return/:id", returnBook);
 router.get("/book/:isbn", getLendingsByBook);
