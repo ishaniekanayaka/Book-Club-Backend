@@ -1,27 +1,29 @@
-# Book Club Library Management System - Backend
+# 📚 Book Club Library Management System - Backend
 
-This is the backend service for the **Book Club Library Management System**.  
-It provides APIs for managing users, books, lending, and overdue tracking.
-
----
-
-## Features
-- User Authentication (JWT-based)
-- Role-based access (Admin, Librarian, Reader, Staff)
-- Book Management (CRUD + categories + soft delete)
-- Lending & Overdue Management
-- Email Notifications (SendGrid/Nodemailer)
+This is the **backend service** for the **Book Club Library Management System**.  
+It powers user authentication, book management, lending, overdue handling, and notifications.  
 
 ---
 
-## Tech Stack
-- **Node.js** + **Express.js**
-- **MongoDB** with Mongoose
-- **JWT Authentication**
-- **Nodemailer / SendGrid**
-- **Cloudinary** for image storage
+## 🚀 Features
+- 🔐 **User Authentication** (JWT-based)  
+- 👥 **Role-based Access Control** (Admin, Librarian, Reader, Staff)  
+- 📖 **Book Management** (CRUD, categories, soft delete)  
+- 📅 **Lending & Overdue Management**  
+- 📧 **Email Notifications** (SendGrid/Nodemailer)  
 
 ---
 
-## Frontend
-👉 [Click here for the Frontend Repository](https://github.com/ishaniekanayaka/Book-Club-Frontend.git)
+## 🛠️ Tech Stack
+- **Node.js** + **Express.js**  
+- **MongoDB** with Mongoose  
+- **JWT Authentication**  
+- **Nodemailer / SendGrid**  
+- **Cloudinary** (Image Storage)  
+
+---
+
+## 🎨 Frontend Repository
+👉 [Book Club Frontend](https://github.com/ishaniekanayaka/Book-Club-Frontend.git)
+
+
